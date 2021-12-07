@@ -2,12 +2,13 @@
 """
 Created on Thu Dec  2 15:16:18 2021
 
-@author: Home
+@author: Sagun Shakya
 """
 
 import torch
 from torch.nn.functional import pad
 import matplotlib.pyplot as plt
+
 
 def word_list2id_list(word_list, word2idx, tag2idx, mapper = 'word'):
     '''
