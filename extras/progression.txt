@@ -1,0 +1,30 @@
+Attempt 1:
+- For aspect and target extraction task, Collected data from https://github.com/oya163/nepali-sentiment-analysis/tree/master/data. 
+- Created parser to put it in a dataframe.
+- Bit of cleaning to make it look like a standard NER for english dataset.
+    - See https://github.com/sagun-shakya/NER-English/blob/master/data/ner_dataset.csv.
+    - Modified this https://github.com/sagun-shakya/NER-English/blob/master/Load_dataset.py.
+
+Attempt 2:
+- Wrote padder function.
+- Integrated the initial text/labels and one-hot encoded/padded inputs/labels in a single dataframe.
+- BiLSTM model as in Oyesh's model that contains tags for both aspect and target extraction tasks.
+- Configuration:
+        bidirection = True, 
+        batch_size = 32,
+        num_layers = 2,
+        hidden_dim = 100, 
+        embedding_dim = 300, 
+        dropout_prob = 0.5,
+        pretrained = False,     # If this is True, then, we used a untrainable set of word embeddings.
+        train_type = (2,3)
+- data_loader:
+        vocab_size = len(xy.words),
+        tagset_size = len(xy.tags),
+        weights = None          # Embedding weights.      
+- Ran for two epochs.
+
+Attempt 3:
+- Modified the code for accomodating target, aspect and combined extraction tasks.
+    - Added TrainTest class to dataset_module to make it flexible for choosing the tags accordingly.
+- Three separate files ['aspect_extraction.py', 'combined_extraction.py', 'target_extraction.py']. 

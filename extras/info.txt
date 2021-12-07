@@ -1,0 +1,14 @@
+# Get the statistics of the number of self.words per sentence.
+# =============================================================================
+# lens = pd.Series(list(map(len, self.df_sent_tags['sentences'].values)))
+# print(lens.describe())
+# 
+# count    4359.000000
+# mean       14.588208
+# std         8.674760
+# min         3.000000
+# 25%         9.000000
+# 50%        13.000000
+# 75%        18.000000
+# max        93.000000
+# =============================================================================
