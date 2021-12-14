@@ -1,0 +1,11 @@
+Keras Implementation:
+https://github.com/adapt-sjtu/novelner/blob/master/Sequence-Labelling/model.py
+
+Chinese NER Tensorflow:
+https://github.com/determined22/zh-ner-tf
+
+Torch Implementation:
+https://github.com/jidasheng/bi-lstm-crf/tree/master/bi_lstm_crf/model
+
+Clean Code: FrankNER Keras
+https://github.com/mpgxc/frank.ner/blob/main/frankner/model.py
