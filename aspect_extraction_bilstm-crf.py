@@ -181,12 +181,13 @@ for ee in range(epochs):
             for jj, ((seqv, seq_lenv), tagsv) in enumerate(test_loader):
                 
                 model.eval()
-                best_path_scores, best_path = model.decode(seqv, seq_lenv, tagsv)
-                best_path = torch.tensor(best_path)
-                
-                # Find accuracy for the batch.
-                cat_accuracy = utils.categorical_accuracy(best_path, seqv, seq_lenv)
-                val_accuracy.append(cat_accuracy)
+                with torch.no_grad():
+                    best_path_scores, best_path = model.decode(seqv, seq_lenv, tagsv)
+                    best_path = torch.tensor(best_path)
+                    
+                    # Find accuracy for the batch.
+                    cat_accuracy = utils.categorical_accuracy(best_path, seqv, seq_lenv)
+                    val_accuracy.append(cat_accuracy)
                 
             print(f"\nAverage validation accuracy: {utils.compute_average(val_accuracy)}")
             print("Moving on...")
