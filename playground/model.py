@@ -59,7 +59,8 @@ hidden_dim = 128
 
 START_TAG = "<START>"
 STOP_TAG = "<STOP>"
-tag_names = [START_TAG] + tag_names + [STOP_TAG]
+PAD = "<pad>"
+tag_names = [START_TAG] + tag_names + [PAD, STOP_TAG]
 
 tag2idx = {tag : ii for ii, tag in enumerate(tag_names)}
 idx2tag = {v:k for k,v in tag2idx.items()}
@@ -73,7 +74,7 @@ WEIGHT_DECAY = 1e-4
 
 # Word Pad ID.
 word_pad_id = 11625
-tag_pad_id = 9
+tag_pad_id = tag2idx[PAD]
 
 #%% Helper Functions.
 def argmax(vec):
@@ -385,7 +386,11 @@ for ee in range(epochs):
     loss_cache_train_grained['epoch_' + str(ee+1)] = loss_train
     loss_cache_train['epoch_' + str(ee+1)] = running_loss / (ii + 1)
 
+#%% NExt
+from crf_batch import CRF
 
+crf = CRF(nb_labels=num_tags,
+          bos_tag_id= tag2idx[START_TAG], eos_tag_id=tag2idx[STOP_TAG], pad_tag_id=)
 
 
 
