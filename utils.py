@@ -76,7 +76,7 @@ def list_to_tensor(mylist):
         
     return x_new
        
-def categorical_accuracy(model_output, true_labels, tag_pad_value = 17):
+def categorical_accuracy_old(model_output, true_labels, tag_pad_value = 17):
     try:
         predicted_labels = model_output.argmax(axis = 1)
 
@@ -101,6 +101,34 @@ def categorical_accuracy(model_output, true_labels, tag_pad_value = 17):
 
     except AssertionError as msg:
         print(msg)
+
+def categorical_accuracy(prediction, seq, seq_len):
+    correct = 0
+    for ii, length in enumerate(seq_len):
+        # Select tokens only upto seq_len. Avoid the pad values.
+        seq_only = seq[ii][:length].to(torch.int32)
+        pred_only = prediction[ii][:length].to(torch.int32)
+        
+        # Mask of 1s and 0s to check whether the predictions are correct.
+        mask = (seq_only == pred_only)
+        mask = mask.to(torch.int32)
+        
+        # Add all 1's to get the number of correct predictions.
+        num_correct = mask.sum().item()
+        correct = correct + num_correct
+    
+    # Total number of non-pad words in the batch.
+    num_words_in_batch = seq_len.sum().item()
+    
+    # Proportion of correct predictions gives the accuracy for the batch.
+    proportion_correct = correct / num_words_in_batch
+    return proportion_correct
+        
+        
+        
+        
+        
+
         
 # Calculating the average loss for the valdation set in this iteration.
 compute_average = lambda arr: sum(arr) / len(arr)
