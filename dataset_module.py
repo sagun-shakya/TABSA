@@ -40,7 +40,7 @@ class TrainTest:
     def __init__(self, data):
                 
         # Unique self.words.
-        self.words = data['token'].unique().tolist() + ['<UNK>', '<PAD>', 'ENDTAG']
+        self.words = data['token'].unique().tolist() + ['<UNK>', 'ENDTAG']
         
         # Unique self.tags.
         self.tags = data['tag'].unique().tolist()
@@ -67,36 +67,41 @@ class TrainTest:
         id_del = [ii for ii, item in enumerate(self.sentences) if len(item) < 3]
         self.df_sent_tags.drop(self.df_sent_tags.index[id_del], inplace=True)
         
-        print("Number of sentences having less than 3 self.words (that is removed): ", len(self.sentences) - len(self.df_sent_tags))
+        print("Number of sentences having less than 3 words (that is removed): ", len(self.sentences) - len(self.df_sent_tags))
         
-        # Mappings from word/tag to its IDs.
-        self.word2idx = {word : ii for ii, word in enumerate(self.words, 1)}
-        self.tag2idx = {tag : ii for ii, tag in enumerate(self.tags, 0)}
-        self.tag_pad_id = len(self.tags)
-        self.tag2idx['<pad>'] = self.tag_pad_id
-        
-        # Inverse mapping.
-        self.idx2word = {ii : word for ii, word in enumerate(self.words, 1)}
-        self.idx2tag = {ii : tag for ii, tag in self.tag2idx.items()}
-        self.idx2tag[self.tag_pad_id] = '<pad>'
-        
-        # Pad Index for word_sequence and tag_sequence.
-        self.word_pad_id = self.word2idx['<PAD>']
-        
-        # Unpadded sequences.
-        # List of token IDs for wach sentence and the self.tagset. 
-        self.df_sent_tags['word_id'] = self.df_sent_tags['sentences'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
-                                                                                                                           self.word2idx, 
-                                                                                                                           self.tag2idx, 
-                                                                                                                           mapper = 'word'))) 
-        self.df_sent_tags['seq_id'] = self.df_sent_tags['tag_sequence'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
-                                                                                                                             self.word2idx, 
-                                                                                                                             self.tag2idx, 
-                                                                                                                             mapper = 'tag'))) 
-        
-        
-        # x.
-        self.df_sent_tags['padded_word_id'] = self.df_sent_tags['word_id'].apply(lambda x: utils.padder_func(x, self.word_pad_id))
-        # y.
-        self.df_sent_tags['padded_seq_id'] = self.df_sent_tags['seq_id'].apply(lambda x: utils.padder_func(x, self.tag_pad_id))
+# =============================================================================
+#         # Mappings from word/tag to its IDs.
+#         self.word2idx = {word : ii for ii, word in enumerate(self.words, 0)}
+#         self.tag2idx = {tag : ii for ii, tag in enumerate(self.tags, 0)}
+#         
+# =============================================================================
+# =============================================================================
+#         self.tag_pad_id = len(self.tags)
+#         self.tag2idx['<pad>'] = self.tag_pad_id
+#         
+#         # Inverse mapping.
+#         self.idx2word = {ii : word for ii, word in enumerate(self.words, 1)}
+#         self.idx2tag = {ii : tag for ii, tag in self.tag2idx.items()}
+#         self.idx2tag[self.tag_pad_id] = '<pad>'
+#         
+#         # Pad Index for word_sequence and tag_sequence.
+#         self.word_pad_id = self.word2idx['<PAD>']
+#         
+#         # Unpadded sequences.
+#         # List of token IDs for wach sentence and the self.tagset. 
+#         self.df_sent_tags['word_id'] = self.df_sent_tags['sentences'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
+#                                                                                                                            self.word2idx, 
+#                                                                                                                            self.tag2idx, 
+#                                                                                                                            mapper = 'word'))) 
+#         self.df_sent_tags['seq_id'] = self.df_sent_tags['tag_sequence'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
+#                                                                                                                              self.word2idx, 
+#                                                                                                                              self.tag2idx, 
+#                                                                                                                              mapper = 'tag'))) 
+#         
+#         
+#         # x.
+#         self.df_sent_tags['padded_word_id'] = self.df_sent_tags['word_id'].apply(lambda x: utils.padder_func(x, self.word_pad_id))
+#         # y.
+#         self.df_sent_tags['padded_seq_id'] = self.df_sent_tags['seq_id'].apply(lambda x: utils.padder_func(x, self.tag_pad_id))
+# =============================================================================
         
