@@ -8,31 +8,84 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 
-import pickle
 from sklearn.model_selection import train_test_split
 import os
 
 #LOCAL MODULES.
-#from utils import log_sum_exp, argmax
+import utils
+from utils import log_sum_exp, argmax
 from bilstm_crf_model import BiLSTM_CRF
-from dataset_module import TABSADataset
+from dataset_module import TABSADataset, TrainTest
+from load_data import get_file_in_df
 
-# load data.
-file_path = os.path.join(os.path.dirname(__file__), r'data', r'df_sent_tags.pkl')
+# Relative path.
+filename = os.path.join(os.path.dirname(__file__), r'data', r'data_aspect_target_extraction.txt')
 
-# load : get the data from file
-df_sent_tags = pickle.load(open(file_path, "rb"))
+# Parse the txt file in a Pandas DataFrame.
+data = get_file_in_df(filename, mode = 'aspect')
 
+# Removing the last 4 rows.
+data = data.iloc[:-4]
+
+# Getting the input and output to the model.
+xy = TrainTest(data)
+words = xy.words
+words = ['<PAD>'] + words
+
+# WOrd to index. <PAD> is indexed as 0.
+word2idx = {word : ii for ii, word in enumerate(words, 0)}
+
+# Retrieve sentence and tags dataframe.
+df_sent_tags = xy.df_sent_tags
+
+# Adding the <pad> to the tag set.
+tags = xy.tags
+
+# Add padding.
+PAD = '<pad>'
+tags = [PAD] + tags
+
+# Tag to Index.
+tag2idx = {tag : ii for ii, tag in enumerate(tags, 1)} 
+
+# Word Pad ID and Tag Pad ID.
+word_pad_id = word2idx['<PAD>']
+tag_pad_id = tag2idx[PAD]
+
+# Inverse mapping.
+dict_flipper = lambda mydict : {v : k for k,v in mydict.items()}
+idx2word = dict_flipper(word2idx)
+idx2tag = dict_flipper(tag2idx)
+
+#%% Unpadded sequences.
+# List of token IDs for wach sentence and the tagset. 
+df_sent_tags['word_id'] = df_sent_tags['sentences'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
+                                                                                                        word2idx, 
+                                                                                                        tag2idx, 
+                                                                                                        mapper = 'word'))) 
+df_sent_tags['seq_id'] = df_sent_tags['tag_sequence'].apply(lambda x: torch.tensor(utils.word_list2id_list(x, 
+                                                                                                          word2idx, 
+                                                                                                          tag2idx, 
+                                                                                                          mapper = 'tag'))) 
+
+
+# Add padding.
+# x.
+df_sent_tags['padded_word_id'] = df_sent_tags['word_id'].apply(lambda x: utils.padder_func(x, word_pad_id, max_len = 60))
+# y.
+df_sent_tags['padded_seq_id'] = df_sent_tags['seq_id'].apply(lambda x: utils.padder_func(x, tag_pad_id, max_len = 60))
+
+
+
+
+
+#%% Prepare data.
 x = df_sent_tags['padded_word_id'].tolist()
 y = df_sent_tags['padded_seq_id'].tolist()
 
-x_new = torch.full(size = (len(x), len(x[0])), fill_value = 0)
-y_new = torch.full(size = (len(y), len(y[0])), fill_value = 0)
-
-for ii in range(len(x)):
-    x_new[ii] = x[ii]
-    y_new[ii] = y[ii]
-    
+# Converting to torch tensor.
+x_new = utils.list_to_tensor(x)
+y_new = utils.list_to_tensor(y)   
 
 # Train - Test split.
 x_train, x_test, y_train, y_test = train_test_split(x_new, 
@@ -40,16 +93,12 @@ x_train, x_test, y_train, y_test = train_test_split(x_new,
                                                     test_size = 0.2, 
                                                     random_state = 1)
 
-# Constants. 
+#%% Constants. 
 # TO-DO: Needs to be put in a config file.
-tag_names = ['B-FEEDBACK', 'I-FEEDBACK',
-            'B-GENERAL', 'I-GENERAL',
-            'B-PROFANITY', 'I-PROFANITY',
-            'B-VIOLENCE', 'I-VIOLENCE',
-            'O']
+tag_names = tags
 
 tagset_size = len(tag_names)
-vocab_size = 11626
+vocab_size = len(words)
 max_len = 60
 batch_size = 32
 hidden_dim = 128
@@ -61,27 +110,25 @@ START_TAG = "<START>"
 STOP_TAG = "<STOP>"
 tag_names = [START_TAG] + tag_names + [STOP_TAG]
 
-tag2idx = {tag : ii for ii, tag in enumerate(tag_names)}
-idx2tag = {v:k for k,v in tag2idx.items()}
+tag2idx[START_TAG] = 0     # 10
+tag2idx[STOP_TAG] = len(tag2idx)      # 11
+idx2tag[0] = START_TAG
+idx2tag[tag2idx[STOP_TAG]] = STOP_TAG
 
 # Updated number of tags.
-num_tags = tagset_size + 2
+num_tags = len(tag_names) + 2
 
 # For the model.
 LEARNING_WEIGHT = 1e-2
 WEIGHT_DECAY = 1e-4
 
-# Word Pad ID.
-word_pad_id = 11625
-tag_pad_id = 9
-
+# Number of epochs.
 epochs = 5
-
-# Data Iterators: Train and Test.
+#%% Data Iterators: Train and Test.
 train_loader = DataLoader(TABSADataset(x_train, y_train, word_pad_id), batch_size = batch_size, shuffle=True)
 test_loader = DataLoader(TABSADataset(x_test, y_test, word_pad_id), batch_size = batch_size, shuffle=True)
 
-# Model  build.
+#%% Model  build.
 model = BiLSTM_CRF(batch_size, 
                    max_len, 
                    embedding_dim, 
@@ -98,21 +145,9 @@ model = BiLSTM_CRF(batch_size,
 # Defining the parameters of the network.
 optimizer = Adam(model.parameters(), lr = LEARNING_WEIGHT, weight_decay = WEIGHT_DECAY)
 
-# Train.
-
-# Cache for accuracy and losses in each epoch for training and validatin sets.
-#accuracy_cache_train = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-#accuracy_cache_val = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-
+#%% Train.
 loss_cache_train = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-#loss_cache_val = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-
-# Fine-grained accuracy and loss cache to see how these values evolve for each batch within each epoch.
-#accuracy_cache_train_grained = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-#accuracy_cache_val_grained = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-
 loss_cache_train_grained = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
-#loss_cache_val_grained = {"epoch_" + str(ii + 1) : None for ii in range(epochs)}
 
 for ee in range(epochs):
     loss_train = []
@@ -133,12 +168,40 @@ for ee in range(epochs):
         running_loss += mean_batch_loss   # Computes the mean of NLL loss for the batch (all sentences).
         
         loss_train.append(criterion)
-        criterion.backward()
         
+        criterion.backward()       
         optimizer.step()
         
-        if (ii + 1) % 50 == 0:
-            print(f"Training Loss Till:\nEpoch : {ee + 1} of epochs || Iteration : {ii + 1} || Training Loss : {mean_batch_loss}")
+        if (ii + 1) % 25 == 0:
+            # Verbose.
+            print(f"Training Loss Till:\nEpoch : {ee + 1} of {epochs} || Iteration : {ii + 1} || Training Loss : {mean_batch_loss}")
             
+            # Make predictions using viterbi decoder & Capture validation accuracy.
+            val_accuracy = []
+            for jj, ((seqv, seq_lenv), tagsv) in enumerate(test_loader):
+                
+                model.eval()
+                best_path_scores, best_path = model.decode(seqv, seq_lenv, tagsv)
+                best_path = torch.tensor(best_path)
+                
+                # Find accuracy for the batch.
+                cat_accuracy = utils.categorical_accuracy(best_path, seqv, seq_lenv)
+                val_accuracy.append(cat_accuracy)
+                
+            print(f"\nAverage validation accuracy: {utils.compute_average(val_accuracy)}")
+            print("Moving on...")
+    
     loss_cache_train_grained['epoch_' + str(ee+1)] = loss_train
     loss_cache_train['epoch_' + str(ee+1)] = running_loss / (ii + 1)
+    
+# =============================================================================
+# #%% Exp
+# import torch.nn as nn
+# 
+# for ii, ((seq, seq_len), tags) in enumerate(train_loader):
+#     lstm_feats = model._lstm_features(sentence = seq, seq_len = seq_len, tag = tags)
+#     break
+# 
+# #%% crf viterbi
+# best_path_scores, best_path = model.decode(seq, seq_len, tags)
+# =============================================================================
