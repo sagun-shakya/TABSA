@@ -52,7 +52,30 @@ def padder_func(tensor_i, value, max_len = 60):
     '''
     return pad(tensor_i, pad = (0, max_len - len(tensor_i)), mode = "constant", value = value)
     
+
+def list_to_tensor(mylist):
+    '''
+    Converts a list of tensors to tensor.
+    All the tensors inside the list should be of the same length.
+
+    Parameters
+    ----------
+    mylist : list
+        Contains tensors all of length 'max_len'.
+
+    Returns
+    -------
+    tensor of shape (len(mylist), max_len).
+
+    '''
+    
+    x_new = torch.full(size = (len(mylist), len(mylist[0])), fill_value = 0)
+    
+    for ii in range(len(mylist)):
+        x_new[ii] = mylist[ii]
         
+    return x_new
+       
 def categorical_accuracy(model_output, true_labels, tag_pad_value = 17):
     try:
         predicted_labels = model_output.argmax(axis = 1)
