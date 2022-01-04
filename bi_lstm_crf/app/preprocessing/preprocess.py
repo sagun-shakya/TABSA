@@ -1,3 +1,22 @@
+"""
+Date: 02-01-022
+Author: Sagun Shakya
+
+Preprocessor class. 
+
+This class implements the following tasks: 
+    - Read the raw data located at dir(sample_corpus).
+        - The data required are named as {dataset1.pkl, vocab.json, tags.json}.
+        - dataset1.pkl is a dataframe with columns [sentences, tag_sequences].
+        - The x values are list of tokens and the y values are the list of tokens.
+    - Convert the list of tokens to one hot vectors.
+        - OOV_IDX = len(vocab)
+    - Fix the length of the sequences to max_seq_len using padder_func.
+        - PAD_IDX = 0
+    - Train-Test-Validation Split.
+"""
+
+# Importing necessary libraries.
 from os.path import join, exists
 import numpy as np
 from tqdm import tqdm
@@ -7,13 +26,28 @@ from bi_lstm_crf.app.preprocessing.utils import wordlist_to_idx, padder_func
 import pandas as pd
 import json
 
+# Constants.
 FILE_VOCAB = "vocab.json"
 FILE_TAGS = "tags.json"
 FILE_DATASET = "dataset1.pkl"
 FILE_DATASET_CACHE = "dataset_cache_{}.npz"
 
+START_TAG = "<START>"
+STOP_TAG = "<STOP>"
+
+PAD = "<PAD>"
+OOV = "<OOV>"
 
 class Preprocessor:
+    '''
+    Takes in the raw data in the form of a pickled dataframe and provides the input for train function.
+    
+    Parameters:
+    config_dir -- path to corpus_dir.
+    save_config_dir -- path to model_dir to save the models and cache.
+    verbose -- display information. 
+    '''
+
     def __init__(self, config_dir, save_config_dir=None, verbose=True):
         self.config_dir = config_dir
         self.verbose = verbose
@@ -39,11 +73,14 @@ class Preprocessor:
             return elements, elements_dict
 
     def __adjust_vocab(self):
-        self.vocab.insert(0, self.PAD_IDX)
-        self.vocab_dict[self.PAD_IDX] = 0
+        '''
+        Insert PAD and OOV tokens in the vocabulary list.
+        '''
+        self.vocab.insert(0, PAD)
+        self.vocab_dict[PAD] = 0
 
-        self.vocab.append(self.OOV_IDX)
-        self.vocab_dict[self.OOV_IDX] = len(self.vocab) - 1
+        self.vocab.append(OOV)
+        self.vocab_dict[OOV] = len(self.vocab) - 1
 
     def __save_config(self, dst_dir):
         char_file = join(dst_dir, FILE_VOCAB)
@@ -61,28 +98,13 @@ class Preprocessor:
         return join(corpus_dir, FILE_DATASET_CACHE.format(max_seq_len))
 
     def load_dataset(self, corpus_dir, val_split, test_split, max_seq_len):
-        """load the train set
+        """
+        Loads the train set.
 
         :return: (xs, ys)
             xs: [B, L]
             ys: [B, L, C]
-        """
-# =============================================================================
-#         ds_path = self.__cache_file_path(corpus_dir, max_seq_len)
-#         if not exists(ds_path):
-#             xs, ys = self.__build_corpus(corpus_dir, max_seq_len)
-#         else:
-#             print("loading dataset {} ...".format(ds_path))
-#             dataset = np.load(ds_path)
-#             xs, ys = dataset["xs"], dataset["ys"]
-# =============================================================================
-
-# =============================================================================
-#         xs, ys = map(
-#             torch.tensor, (xs, ys)
-#         )
-# =============================================================================
-        
+        """        
         xs, ys = self.build_corpus(corpus_dir, max_seq_len)
         # split the dataset
         total_count = len(xs)
@@ -108,6 +130,18 @@ class Preprocessor:
 
 
     def build_corpus(self, corpus_dir, max_seq_len):
+        '''
+        Reads the raw data from dataset1.pkl.
+
+        Parameters:
+        corpus_dir -- Path to sample_corpus.
+        max_seq_len -- Length of the input vectors (includes padding).
+
+        Returns:
+        Tuple. Torch tensors of X values representing sentences in one-hot-vector form and
+        Y values representing tags in one-hot-vector form including padding element. 
+        '''
+        
         file_path = join(corpus_dir, FILE_DATASET)
         
         f = pd.read_pickle(file_path)
