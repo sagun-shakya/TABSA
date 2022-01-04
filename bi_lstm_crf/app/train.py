@@ -1,3 +1,13 @@
+"""
+Date: 02-01-022
+Author: Sagun Shakya
+
+Main trainer function. 
+This function is called when the project is run from the command line.
+All the arguments have their default values except for the corpus directory (corpus_dir).
+"""
+
+# Importing necessary libraries.
 from os import mkdir
 from tqdm import tqdm
 import pandas as pd
@@ -19,16 +29,25 @@ def __eval_model(model, device, dataloader, desc):
 
 
 def __save_loss(losses, file_path):
+    '''Saves losses in a CSV format.'''
     pd.DataFrame(data=losses, columns=["epoch", "batch", "train_loss", "val_loss"]).to_csv(file_path, index=False)
 
 
 def __save_model(model_dir, model):
+    '''Saves the model to be reused later.'''
     model_path = model_filepath(model_dir)
     torch.save(model.state_dict(), model_path)
     print("save model => {}".format(model_path))
 
 
 def train(args):
+    '''
+    The main trainer function. This function is called when run from the command line.
+
+    Parameters:
+    args -- Takes the arguments from the argument parser.
+    '''
+    
     model_dir = args.model_dir
     if not exists(model_dir):
         mkdir(model_dir)
@@ -102,6 +121,9 @@ def train(args):
 
 
 def main():
+    '''Takes in the arguments for running the training loop.
+    corpus_dir need not be mentioned explicitly.'''
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('corpus_dir', type=str, help="the corpus directory")
@@ -127,8 +149,6 @@ def main():
 
     args = parser.parse_args()
     train(args)
-
-
 
 if __name__ == "__main__":
     main()
